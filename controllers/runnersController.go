@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"runners/interfaces"
 	"runners/metrics"
+	"runners/middleware"
 	"runners/models"
 	"strconv"
 
@@ -28,18 +29,10 @@ func NewRunnersController(runnersService interfaces.RunnersService, usersService
 func (rc RunnersController) CreateRunner(ctx *gin.Context) {
 	metrics.HttpRequestsCounter.Inc()
 
-	accessToken := ctx.Request.Header.Get("Token")
-	auth, responseErr := rc.usersService.AuthorizeUser(accessToken, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
 		ctx.JSON(responseErr.Status, responseErr)
-		return
-	}
-
-	if !auth {
-		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.Status(http.StatusUnauthorized)
 		return
 	}
 
@@ -65,7 +58,7 @@ func (rc RunnersController) CreateRunner(ctx *gin.Context) {
 	response, responseErr := rc.runnersService.CreateRunner(&runner)
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
+		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
 		ctx.AbortWithStatusJSON(responseErr.Status, responseErr)
 		return
 	}
@@ -77,18 +70,11 @@ func (rc RunnersController) CreateRunner(ctx *gin.Context) {
 func (rc RunnersController) UpdateRunner(ctx *gin.Context) {
 	metrics.HttpRequestsCounter.Inc()
 
-	accessToken := ctx.Request.Header.Get("Token")
-	auth, responseErr := rc.usersService.AuthorizeUser(accessToken, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.JSON(responseErr.Status, responseErr)
-		return
-	}
-
-	if !auth {
 		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.Status(http.StatusUnauthorized)
+		ctx.JSON(responseErr.Status, responseErr)
 		return
 	}
 
@@ -126,18 +112,11 @@ func (rc RunnersController) UpdateRunner(ctx *gin.Context) {
 func (rc RunnersController) DeleteRunner(ctx *gin.Context) {
 	metrics.HttpRequestsCounter.Inc()
 
-	accessToken := ctx.Request.Header.Get("Token")
-	auth, responseErr := rc.usersService.AuthorizeUser(accessToken, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.JSON(responseErr.Status, responseErr)
-		return
-	}
-
-	if !auth {
 		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.Status(http.StatusUnauthorized)
+		ctx.JSON(responseErr.Status, responseErr)
 		return
 	}
 
@@ -158,18 +137,11 @@ func (rc RunnersController) DeleteRunner(ctx *gin.Context) {
 func (rc RunnersController) GetRunner(ctx *gin.Context) {
 	metrics.HttpRequestsCounter.Inc()
 
-	accessToken := ctx.Request.Header.Get("Token")
-	auth, responseErr := rc.usersService.AuthorizeUser(accessToken, []string{ROLE_ADMIN, ROLE_USER})
+	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN, ROLE_USER})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.JSON(responseErr.Status, responseErr)
-		return
-	}
-
-	if !auth {
 		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.Status(http.StatusUnauthorized)
+		ctx.JSON(responseErr.Status, responseErr)
 		return
 	}
 
@@ -190,18 +162,11 @@ func (rc RunnersController) GetRunner(ctx *gin.Context) {
 func (rc RunnersController) GetRunnersBatch(ctx *gin.Context) {
 	metrics.HttpRequestsCounter.Inc()
 
-	accessToken := ctx.Request.Header.Get("Token")
-	auth, responseErr := rc.usersService.AuthorizeUser(accessToken, []string{ROLE_ADMIN, ROLE_USER})
+	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN, ROLE_USER})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.JSON(responseErr.Status, responseErr)
-		return
-	}
-
-	if !auth {
 		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.Status(http.StatusUnauthorized)
+		ctx.JSON(responseErr.Status, responseErr)
 		return
 	}
 

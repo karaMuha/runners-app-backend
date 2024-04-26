@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"runners/interfaces"
 	"runners/metrics"
+	"runners/middleware"
 	"runners/models"
 	"strconv"
 
@@ -28,18 +29,11 @@ func NewResultsController(resultsService interfaces.ResultsService, usersService
 func (rc ResultsController) CreateResult(ctx *gin.Context) {
 	metrics.HttpRequestsCounter.Inc()
 
-	accessToken := ctx.Request.Header.Get("Token")
-	auth, responseErr := rc.usersService.AuthorizeUser(accessToken, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.JSON(responseErr.Status, responseErr)
-		return
-	}
-
-	if !auth {
 		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.Status(http.StatusUnauthorized)
+		ctx.JSON(responseErr.Status, responseErr)
 		return
 	}
 
@@ -77,18 +71,11 @@ func (rc ResultsController) CreateResult(ctx *gin.Context) {
 func (rc ResultsController) DeleteResult(ctx *gin.Context) {
 	metrics.HttpRequestsCounter.Inc()
 
-	accessToken := ctx.Request.Header.Get("Token")
-	auth, responseErr := rc.usersService.AuthorizeUser(accessToken, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.JSON(responseErr.Status, responseErr)
-		return
-	}
-
-	if !auth {
 		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.Status(http.StatusUnauthorized)
+		ctx.JSON(responseErr.Status, responseErr)
 		return
 	}
 
