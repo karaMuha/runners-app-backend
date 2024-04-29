@@ -91,3 +91,45 @@ func (rc ResultsController) DeleteResult(ctx *gin.Context) {
 	metrics.HttpResponsesCounter.WithLabelValues("204").Inc()
 	ctx.Status(http.StatusNoContent)
 }
+
+func (rc ResultsController) UpdateResult(ctx *gin.Context) {
+	metrics.HttpRequestsCounter.Inc()
+
+	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
+
+	if responseErr != nil {
+		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
+		ctx.JSON(responseErr.Status, responseErr)
+		return
+	}
+
+	body, err := io.ReadAll(ctx.Request.Body)
+
+	if err != nil {
+		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
+		log.Println("Error while reading create result request body", err)
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	var result models.Result
+	err = json.Unmarshal(body, &result)
+
+	if err != nil {
+		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
+		log.Println("Error while unmarshling creates result request body", err)
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	responseErr = rc.resultsService.UpdateResult(&result)
+
+	if responseErr != nil {
+		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
+		ctx.JSON(responseErr.Status, responseErr)
+		return
+	}
+
+	metrics.HttpResponsesCounter.WithLabelValues("200").Inc()
+	ctx.Status(http.StatusOK)
+}
