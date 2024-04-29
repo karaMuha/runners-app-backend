@@ -6,8 +6,6 @@ import (
 	"runners/interfaces"
 	"runners/metrics"
 	"strconv"
-
-	"github.com/gin-gonic/gin"
 )
 
 const ROLE_ADMIN = "admin"
@@ -23,40 +21,42 @@ func NewUsersController(usersService interfaces.UsersService) *UsersController {
 	}
 }
 
-func (uc UsersController) Login(ctx *gin.Context) {
+func (uc UsersController) Login(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	username, password, ok := ctx.Request.BasicAuth()
+	username, password, ok := r.BasicAuth()
 	if !ok {
 		metrics.HttpResponsesCounter.WithLabelValues("400").Inc()
-		log.Println("Error while readinf credentials")
-		ctx.AbortWithStatus(http.StatusBadRequest)
+		log.Println("Error while reading credentials")
+		http.Error(w, "Error while reading credentials", 400)
 		return
 	}
 
 	accessToken, responseErr := uc.usersService.Login(username, password)
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.AbortWithStatusJSON(responseErr.Status, responseErr)
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
 	metrics.HttpResponsesCounter.WithLabelValues("200").Inc()
-	ctx.JSON(http.StatusOK, accessToken)
+	w.Header().Add("Token", accessToken)
+	w.WriteHeader(http.StatusOK)
 }
 
-func (uc UsersController) Logout(ctx *gin.Context) {
+func (uc UsersController) Logout(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	accessToken := ctx.Request.Header.Get("Token")
+	accessToken := r.Header.Get("Token")
 
 	responseErr := uc.usersService.Logout(accessToken)
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.AbortWithStatusJSON(responseErr.Status, responseErr)
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
 	metrics.HttpResponsesCounter.WithLabelValues("204").Inc()
-	ctx.Status(http.StatusNoContent)
+	w.Header().Del("Token")
+	w.WriteHeader(http.StatusNoContent)
 }
