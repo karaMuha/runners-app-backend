@@ -4,12 +4,10 @@ import (
 	"net/http"
 	"runners/interfaces"
 	"runners/models"
-
-	"github.com/gin-gonic/gin"
 )
 
-func AuthorizeRequest(ctx *gin.Context, usersService interfaces.UsersService, roles []string) *models.ResponseError {
-	accessToken := ctx.Request.Header.Get("Token")
+func AuthorizeRequest(req *http.Request, usersService interfaces.UsersService, roles []string) *models.ResponseError {
+	accessToken := req.Header.Get("Token")
 	auth, responseErr := usersService.AuthorizeUser(accessToken, roles)
 
 	if responseErr != nil {
