@@ -11,19 +11,18 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
-func initTestRouter(dbHandler *sql.DB) *gin.Engine {
+func initTestRouter(dbHandler *sql.DB) *http.ServeMux {
 	runnersRepository := repositories.NewRunnersRepository(dbHandler)
 	usersRepository := repositories.NewUsersRepository(dbHandler)
 	runnersService := services.NewRunnersService(runnersRepository, nil)
 	usersService := services.NewUsersService(usersRepository)
 	runnersController := NewRunnersController(runnersService, usersService)
 
-	router := gin.Default()
-	router.GET("/runner", runnersController.GetRunnersBatch)
+	router := http.NewServeMux()
+	router.HandleFunc("GET /runner", runnersController.GetRunnersBatch)
 
 	return router
 }

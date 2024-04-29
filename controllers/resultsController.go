@@ -2,16 +2,12 @@ package controllers
 
 import (
 	"encoding/json"
-	"io"
-	"log"
 	"net/http"
 	"runners/interfaces"
 	"runners/metrics"
 	"runners/middleware"
 	"runners/models"
 	"strconv"
-
-	"github.com/gin-gonic/gin"
 )
 
 type ResultsController struct {
@@ -26,33 +22,23 @@ func NewResultsController(resultsService interfaces.ResultsService, usersService
 	}
 }
 
-func (rc ResultsController) CreateResult(ctx *gin.Context) {
+func (rc ResultsController) CreateResult(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.JSON(responseErr.Status, responseErr)
-		return
-	}
-
-	body, err := io.ReadAll(ctx.Request.Body)
-
-	if err != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
-		log.Println("Error while reading create result request body", err)
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
 	var result models.Result
-	err = json.Unmarshal(body, &result)
+	err := json.NewDecoder(r.Body).Decode(&result)
 
 	if err != nil {
 		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
-		log.Println("Error while unmarshling creates result request body", err)
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -60,65 +46,59 @@ func (rc ResultsController) CreateResult(ctx *gin.Context) {
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.JSON(responseErr.Status, responseErr)
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
+
+	responseJson, err := json.Marshal(response)
 
 	metrics.HttpResponsesCounter.WithLabelValues("200").Inc()
-	ctx.JSON(http.StatusOK, response)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseJson)
 }
 
-func (rc ResultsController) DeleteResult(ctx *gin.Context) {
+func (rc ResultsController) DeleteResult(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.JSON(responseErr.Status, responseErr)
+		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
-	resultId := ctx.Param("id")
+	resultId := r.PathValue("id")
 	responseErr = rc.resultsService.DeleteResult(resultId)
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.JSON(responseErr.Status, responseErr)
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
 	metrics.HttpResponsesCounter.WithLabelValues("204").Inc()
-	ctx.Status(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }
 
-func (rc ResultsController) UpdateResult(ctx *gin.Context) {
+func (rc ResultsController) UpdateResult(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.JSON(responseErr.Status, responseErr)
-		return
-	}
-
-	body, err := io.ReadAll(ctx.Request.Body)
-
-	if err != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
-		log.Println("Error while reading create result request body", err)
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
 	var result models.Result
-	err = json.Unmarshal(body, &result)
+	err := json.NewDecoder(r.Body).Decode(&result)
 
 	if err != nil {
 		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
-		log.Println("Error while unmarshling creates result request body", err)
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -126,10 +106,10 @@ func (rc ResultsController) UpdateResult(ctx *gin.Context) {
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.JSON(responseErr.Status, responseErr)
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
 	metrics.HttpResponsesCounter.WithLabelValues("200").Inc()
-	ctx.Status(http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }

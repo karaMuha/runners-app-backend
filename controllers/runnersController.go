@@ -2,16 +2,12 @@ package controllers
 
 import (
 	"encoding/json"
-	"io"
-	"log"
 	"net/http"
 	"runners/interfaces"
 	"runners/metrics"
 	"runners/middleware"
 	"runners/models"
 	"strconv"
-
-	"github.com/gin-gonic/gin"
 )
 
 type RunnersController struct {
@@ -26,74 +22,66 @@ func NewRunnersController(runnersService interfaces.RunnersService, usersService
 	}
 }
 
-func (rc RunnersController) CreateRunner(ctx *gin.Context) {
+func (rc RunnersController) CreateRunner(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		ctx.JSON(responseErr.Status, responseErr)
-		return
-	}
-
-	body, err := io.ReadAll(ctx.Request.Body)
-
-	if err != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
-		log.Println("Error while reading create runner request body", err)
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status))
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
 	var runner models.Runner
-	err = json.Unmarshal(body, &runner)
+	err := json.NewDecoder(r.Body).Decode(&runner)
 
 	if err != nil {
 		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
-		log.Println("Error while umarshling create runner request body", err)
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		http.Error(w, "Error while reading request body", http.StatusInternalServerError)
 		return
 	}
 
 	response, responseErr := rc.runnersService.CreateRunner(&runner)
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.AbortWithStatusJSON(responseErr.Status, responseErr)
+		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
+		http.Error(w, responseErr.Message, responseErr.Status)
+		return
+	}
+
+	responseJson, err := json.Marshal(response)
+
+	if err != nil {
+		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	metrics.HttpResponsesCounter.WithLabelValues("200").Inc()
-	ctx.JSON(http.StatusOK, response)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseJson)
 }
 
-func (rc RunnersController) UpdateRunner(ctx *gin.Context) {
+func (rc RunnersController) UpdateRunner(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.JSON(responseErr.Status, responseErr)
-		return
-	}
-
-	body, err := io.ReadAll(ctx.Request.Body)
-
-	if err != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
-		log.Println("Error while reading create runner request body", err)
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status))
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
 	var runner models.Runner
-	err = json.Unmarshal(body, &runner)
+	err := json.NewDecoder(r.Body).Decode(&runner)
 
 	if err != nil {
 		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
-		log.Println("Error while umarshling create runner request body", err)
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		http.Error(w, "Error while reading request body", http.StatusInternalServerError)
 		return
 	}
 
@@ -101,87 +89,106 @@ func (rc RunnersController) UpdateRunner(ctx *gin.Context) {
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.AbortWithStatusJSON(responseErr.Status, responseErr)
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
 	metrics.HttpResponsesCounter.WithLabelValues("200").Inc()
-	ctx.Status(http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }
 
-func (rc RunnersController) DeleteRunner(ctx *gin.Context) {
+func (rc RunnersController) DeleteRunner(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.JSON(responseErr.Status, responseErr)
+		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status))
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
-	runnerId := ctx.Param("id")
+	runnerId := r.PathValue("id")
 
 	responseErr = rc.runnersService.DeleteRunner(runnerId)
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.AbortWithStatusJSON(responseErr.Status, responseErr)
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
 	metrics.HttpResponsesCounter.WithLabelValues("200").Inc()
-	ctx.Status(http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }
 
-func (rc RunnersController) GetRunner(ctx *gin.Context) {
+func (rc RunnersController) GetRunner(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN, ROLE_USER})
+	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.JSON(responseErr.Status, responseErr)
+		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status))
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
-	runnerId := ctx.Param("id")
+	runnerId := r.PathValue("id")
 
 	response, responseErr := rc.runnersService.GetRunner(runnerId)
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.JSON(responseErr.Status, responseErr)
+		http.Error(w, responseErr.Message, responseErr.Status)
+		return
+	}
+
+	responseJson, err := json.Marshal(response)
+
+	if err != nil {
+		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	metrics.HttpResponsesCounter.WithLabelValues("200").Inc()
-	ctx.JSON(http.StatusOK, response)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseJson)
 }
 
-func (rc RunnersController) GetRunnersBatch(ctx *gin.Context) {
+func (rc RunnersController) GetRunnersBatch(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	responseErr := middleware.AuthorizeRequest(ctx, rc.usersService, []string{ROLE_ADMIN, ROLE_USER})
+	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN})
 
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
-		ctx.JSON(responseErr.Status, responseErr)
+		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status))
+		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}
 
-	queryParams := ctx.Request.URL.Query()
-	country := queryParams.Get("country")
-	year := queryParams.Get("year")
+	country := r.URL.Query().Get("country")
+	year := r.URL.Query().Get("year")
 
 	response, responseErr := rc.runnersService.GetRunnersBatch(country, year)
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
-		ctx.JSON(responseErr.Status, responseErr)
+		http.Error(w, responseErr.Message, responseErr.Status)
+		return
+	}
+
+	responseJson, err := json.Marshal(response)
+
+	if err != nil {
+		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	metrics.HttpResponsesCounter.WithLabelValues("200").Inc()
-	ctx.JSON(http.StatusOK, response)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseJson)
 }

@@ -3,17 +3,17 @@ package server
 import (
 	"database/sql"
 	"log"
+	"net/http"
 	"runners/controllers"
 	"runners/repositories"
 	"runners/services"
 
-	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
 
 type HttpServer struct {
 	config            *viper.Viper
-	router            *gin.Engine
+	server            *http.Server
 	runnersController *controllers.RunnersController
 	resultsController *controllers.ResultsController
 	usersController   *controllers.UsersController
@@ -30,23 +30,28 @@ func InitHttpServer(config *viper.Viper, dbHandler *sql.DB) HttpServer {
 	resultsController := controllers.NewResultsController(resultsService, usersService)
 	usersController := controllers.NewUsersController(usersService)
 
-	router := gin.Default()
+	router := http.NewServeMux()
 
-	router.POST("/runner", runnersController.CreateRunner)
-	router.PUT("/runner", runnersController.UpdateRunner)
-	router.DELETE("/runner/:id", runnersController.DeleteRunner)
-	router.GET("/runner/:id", runnersController.GetRunner)
-	router.GET("/runner", runnersController.GetRunnersBatch)
+	router.HandleFunc("POST /runner", runnersController.CreateRunner)
+	router.HandleFunc("PUT /runner", runnersController.UpdateRunner)
+	router.HandleFunc("DELETE /runner/{id}", runnersController.DeleteRunner)
+	router.HandleFunc("GET /runner/{id}", runnersController.GetRunner)
+	router.HandleFunc("GET /runner", runnersController.GetRunnersBatch)
 
-	router.POST("/result", resultsController.CreateResult)
-	router.DELETE("/result/:id", resultsController.DeleteResult)
+	router.HandleFunc("POST /result", resultsController.CreateResult)
+	router.HandleFunc("DELETE /result/{id}", resultsController.DeleteResult)
 
-	router.POST("/login", usersController.Login)
-	router.POST("/logout", usersController.Logout)
+	router.HandleFunc("POST /login", usersController.Login)
+	router.HandleFunc("POST /logout", usersController.Logout)
+
+	server := &http.Server{
+		Addr:    config.GetString("http.server_address"),
+		Handler: router,
+	}
 
 	return HttpServer{
 		config:            config,
-		router:            router,
+		server:            server,
 		runnersController: runnersController,
 		resultsController: resultsController,
 		usersController:   usersController,
@@ -54,7 +59,7 @@ func InitHttpServer(config *viper.Viper, dbHandler *sql.DB) HttpServer {
 }
 
 func (hs HttpServer) Start() {
-	err := hs.router.Run(hs.config.GetString("http.server_address"))
+	err := hs.server.ListenAndServe()
 	if err != nil {
 		log.Fatalf("Error while starting HTTP server: %v", err)
 	}
