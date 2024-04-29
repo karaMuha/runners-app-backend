@@ -77,6 +77,46 @@ func (rr ResultsRepository) CreateResult(result *models.Result) (*models.Result,
 	}, nil
 }
 
+func (rr ResultsRepository) UpdateResult(result *models.Result) *models.ResponseError {
+	query := `
+		UPDATE
+			results
+		SET
+			race_result = $1,
+			location = $2,
+			position = $3,
+			year = $4
+		WHERE
+			result_id = $5
+	`
+	res, err := rr.dbHandler.Exec(query, result.RaceResult, result.Location, result.Position, result.Year, result.ID)
+
+	if err != nil {
+		return &models.ResponseError{
+			Message: err.Error(),
+			Status:  http.StatusInternalServerError,
+		}
+	}
+
+	rowsAffected, err := res.RowsAffected()
+
+	if err != nil {
+		return &models.ResponseError{
+			Message: err.Error(),
+			Status:  http.StatusInternalServerError,
+		}
+	}
+
+	if rowsAffected == 0 {
+		return &models.ResponseError{
+			Message: "Result not found",
+			Status:  http.StatusNotFound,
+		}
+	}
+
+	return nil
+}
+
 func (rr ResultsRepository) DeleteResult(resultId string) (*models.Result, *models.ResponseError) {
 	query := `
 		DELETE FROM

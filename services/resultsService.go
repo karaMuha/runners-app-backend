@@ -53,32 +53,7 @@ func (rs ResultsService) CreateResult(result *models.Result) (*models.Result, *m
 		return nil, responseErr
 	}
 
-	runner, responseErr := rs.runnersRepository.GetRunner(result.RunnerID)
-
-	if responseErr != nil {
-		repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
-		return nil, responseErr
-	}
-
-	if runner == nil {
-		repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
-		return nil, &models.ResponseError{
-			Message: "Runner not found",
-			Status:  http.StatusNotFound,
-		}
-	}
-
-	responseErr = rs.updateRunnersPersonalBest(runner, result, raceResult)
-	if responseErr != nil {
-		return nil, responseErr
-	}
-
-	responseErr = rs.updateRunnersSeasonBest(runner, result, raceResult, currentYear)
-	if responseErr != nil {
-		return nil, responseErr
-	}
-
-	responseErr = rs.runnersRepository.UpdateRunnerResult(runner)
+	responseErr = rs.updateRunnersResult(result, raceResult, currentYear)
 
 	if responseErr != nil {
 		repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
@@ -88,6 +63,52 @@ func (rs ResultsService) CreateResult(result *models.Result) (*models.Result, *m
 	repositories.CommitTransaction(rs.runnersRepository, rs.resultsRepository)
 
 	return response, nil
+}
+
+func (rs ResultsService) UpdateResult(result *models.Result) *models.ResponseError {
+	currentYear := time.Now().Year()
+
+	responseErr := validateInput(result, currentYear)
+
+	if responseErr != nil {
+		return responseErr
+	}
+
+	raceResult, err := parseRaceResult(result.RaceResult)
+
+	if err != nil {
+		return &models.ResponseError{
+			Message: "Invalid race result",
+			Status:  http.StatusBadRequest,
+		}
+	}
+
+	err = repositories.BeginTransaction(rs.runnersRepository, rs.resultsRepository)
+
+	if err != nil {
+		return &models.ResponseError{
+			Message: "Failed to start transaction",
+			Status:  http.StatusBadRequest,
+		}
+	}
+
+	responseErr = rs.UpdateResult(result)
+
+	if responseErr != nil {
+		repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
+		return responseErr
+	}
+
+	responseErr = rs.updateRunnersResult(result, raceResult, currentYear)
+
+	if responseErr != nil {
+		repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
+		return responseErr
+	}
+
+	repositories.CommitTransaction(rs.runnersRepository, rs.resultsRepository)
+
+	return nil
 }
 
 func (rs ResultsService) DeleteResult(resultId string) *models.ResponseError {
@@ -201,14 +222,50 @@ func parseRaceResult(timeString string) (time.Duration, error) {
 	return time.ParseDuration(timeString[0:2] + "h" + timeString[3:5] + "m" + timeString[6:8] + "s")
 }
 
-func (rs ResultsService) updateRunnersPersonalBest(runner *models.Runner, result *models.Result, raceResult time.Duration) *models.ResponseError {
+func (rs ResultsService) updateRunnersResult(result *models.Result, raceResult time.Duration, currentYear int) *models.ResponseError {
+
+	runner, responseErr := rs.runnersRepository.GetRunner(result.RunnerID)
+
+	if responseErr != nil {
+		return responseErr
+	}
+
+	if runner == nil {
+		return &models.ResponseError{
+			Message: "Runner not found",
+			Status:  http.StatusNotFound,
+		}
+	}
+
+	responseErr = updateRunnersPersonalBest(runner, result, raceResult)
+	if responseErr != nil {
+		return responseErr
+	}
+
+	if result.Year == currentYear {
+		responseErr = updateRunnersSeasonBest(runner, result, raceResult)
+		if responseErr != nil {
+			return responseErr
+		}
+	}
+
+	responseErr = rs.runnersRepository.UpdateRunnerResult(runner)
+
+	if responseErr != nil {
+		return responseErr
+	}
+
+	return nil
+}
+
+func updateRunnersPersonalBest(runner *models.Runner, result *models.Result, raceResult time.Duration) *models.ResponseError {
 	if runner.PersonalBest == "" {
 		runner.PersonalBest = result.RaceResult
 	} else {
 		personalBest, err := parseRaceResult(runner.PersonalBest)
 
 		if err != nil {
-			repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
+
 			return &models.ResponseError{
 				Message: "Failed to parse personal best",
 				Status:  http.StatusInternalServerError,
@@ -223,22 +280,19 @@ func (rs ResultsService) updateRunnersPersonalBest(runner *models.Runner, result
 	return nil
 }
 
-func (rs ResultsService) updateRunnersSeasonBest(runner *models.Runner, result *models.Result, raceResult time.Duration, currentYear int) *models.ResponseError {
-	if result.Year == currentYear {
-		if runner.SeasonBest == "" {
+func updateRunnersSeasonBest(runner *models.Runner, result *models.Result, raceResult time.Duration) *models.ResponseError {
+	if runner.SeasonBest == "" {
+		runner.SeasonBest = result.RaceResult
+	} else {
+		seasonBest, err := parseRaceResult(runner.SeasonBest)
+		if err != nil {
+			return &models.ResponseError{
+				Message: "Failed to parse season best",
+				Status:  http.StatusInternalServerError,
+			}
+		}
+		if raceResult < seasonBest {
 			runner.SeasonBest = result.RaceResult
-		} else {
-			seasonBest, err := parseRaceResult(runner.SeasonBest)
-			if err != nil {
-				repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
-				return &models.ResponseError{
-					Message: "Failed to parse season best",
-					Status:  http.StatusInternalServerError,
-				}
-			}
-			if raceResult < seasonBest {
-				runner.SeasonBest = result.RaceResult
-			}
 		}
 	}
 
