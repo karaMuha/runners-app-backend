@@ -52,6 +52,12 @@ func (rc ResultsController) CreateResult(w http.ResponseWriter, r *http.Request)
 
 	responseJson, err := json.Marshal(response)
 
+	if err != nil {
+		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	metrics.HttpResponsesCounter.WithLabelValues("200").Inc()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
