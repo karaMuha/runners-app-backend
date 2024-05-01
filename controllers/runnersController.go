@@ -125,7 +125,7 @@ func (rc RunnersController) DeleteRunner(w http.ResponseWriter, r *http.Request)
 func (rc RunnersController) GetRunner(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN, ROLE_USER})
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status))
@@ -160,7 +160,7 @@ func (rc RunnersController) GetRunner(w http.ResponseWriter, r *http.Request) {
 func (rc RunnersController) GetRunnersBatch(w http.ResponseWriter, r *http.Request) {
 	metrics.HttpRequestsCounter.Inc()
 
-	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN})
+	responseErr := middleware.AuthorizeRequest(r, rc.usersService, []string{ROLE_ADMIN, ROLE_USER})
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status))
