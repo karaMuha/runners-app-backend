@@ -1,6 +1,7 @@
 package services
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"net/http"
 	"runners/models"
@@ -20,7 +21,7 @@ func NewUsersService(usersRepository *repositories.UsersRepository) *UsersServic
 	}
 }
 
-func (us UsersService) Login(username string, password string) (string, *models.ResponseError) {
+func (us UsersService) GetUser(username string, password string) (string, *models.ResponseError) {
 	if strings.TrimSpace(username) == "" || strings.TrimSpace(password) == "" {
 		return "", &models.ResponseError{
 			Message: "Invalid username or password",
@@ -28,26 +29,22 @@ func (us UsersService) Login(username string, password string) (string, *models.
 		}
 	}
 
-	id, responseErr := us.usersRepository.LoginUser(username, password)
-	if responseErr != nil {
-		return "", responseErr
-	}
+	queryResult := us.usersRepository.QueryGetUserId(username, password)
 
-	if id == "" {
+	var userId string
+	err := queryResult.Scan(&userId)
+
+	switch err {
+	case nil:
+		return userId, nil
+	case sql.ErrNoRows:
+		return "", nil
+	default:
 		return "", &models.ResponseError{
-			Message: "Login failed",
-			Status:  http.StatusUnauthorized,
+			Message: err.Error(),
+			Status:  http.StatusInternalServerError,
 		}
 	}
-
-	accessToken, responseErr := generateAccessToken(username)
-	if responseErr != nil {
-		return "", responseErr
-	}
-
-	us.usersRepository.SetAccessToken(accessToken, id)
-
-	return accessToken, nil
 }
 
 func (us UsersService) Logout(accessToken string) *models.ResponseError {
@@ -90,7 +87,7 @@ func (us UsersService) AuthorizeUser(accessToken string, expectedRoles []string)
 	return false, nil
 }
 
-func generateAccessToken(username string) (string, *models.ResponseError) {
+func (us UsersService) GenerateAccessToken(username string, userId string) (string, *models.ResponseError) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(username), bcrypt.DefaultCost)
 	if err != nil {
 		return "", &models.ResponseError{
@@ -99,5 +96,9 @@ func generateAccessToken(username string) (string, *models.ResponseError) {
 		}
 	}
 
-	return base64.StdEncoding.EncodeToString(hash), nil
+	accessToken := base64.StdEncoding.EncodeToString(hash)
+
+	us.usersRepository.SetAccessToken(accessToken, userId)
+
+	return accessToken, nil
 }

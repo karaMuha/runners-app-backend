@@ -32,9 +32,24 @@ func (uc UsersController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, responseErr := uc.usersService.Login(username, password)
+	userId, responseErr := uc.usersService.GetUser(username, password)
+
 	if responseErr != nil {
-		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
+		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
+		http.Error(w, responseErr.Message, responseErr.Status)
+		return
+	}
+
+	if userId == "" {
+		metrics.HttpResponsesCounter.WithLabelValues("404").Inc()
+		http.Error(w, "User not found", 404)
+		return
+	}
+
+	accessToken, responseErr := uc.usersService.GenerateAccessToken(username, userId)
+
+	if responseErr != nil {
+		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
 		http.Error(w, responseErr.Message, responseErr.Status)
 		return
 	}

@@ -16,7 +16,7 @@ func NewUsersRepository(dbHandler *sql.DB) *UsersRepository {
 	}
 }
 
-func (ur UsersRepository) LoginUser(username string, password string) (string, *models.ResponseError) {
+func (ur UsersRepository) QueryGetUserId(username string, password string) *sql.Row {
 	query := `
 				SELECT
 					id
@@ -26,37 +26,9 @@ func (ur UsersRepository) LoginUser(username string, password string) (string, *
 					username = $1
 					AND
 					user_password = crypt($2, user_password)`
-	rows, err := ur.dbHandler.Query(query, username, password)
+	row := ur.dbHandler.QueryRow(query, username, password)
 
-	if err != nil {
-		return "", &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
-
-	var id string
-	for rows.Next() {
-		err := rows.Scan(&id)
-		if err != nil {
-			return "", &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return "", &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	return id, nil
+	return row
 }
 
 func (ur UsersRepository) GetUserRole(accessToken string) (string, *models.ResponseError) {
