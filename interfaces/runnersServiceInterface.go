@@ -11,5 +11,7 @@ type RunnersService interface {
 
 	GetRunner(runnerId string) (*models.Runner, *models.ResponseError)
 
+	GetRunnersResults(runnerId string) ([]*models.Result, *models.ResponseError)
+
 	GetRunnersBatch(country string, year string) ([]*models.Runner, *models.ResponseError)
 }

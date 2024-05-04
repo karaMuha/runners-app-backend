@@ -119,21 +119,11 @@ func (rs RunnersService) GetRunner(runnerId string) (*models.Runner, *models.Res
 		return nil, responseErr
 	}
 
-	runner, responseErr := rs.runnersRepository.QueryGetRunner(runnerId)
+	return rs.runnersRepository.QueryGetRunner(runnerId)
+}
 
-	if responseErr != nil {
-		return nil, responseErr
-	}
-
-	results, responseErr := rs.resultsRepository.QueryGetAllRunnersResults(runnerId)
-
-	if responseErr != nil {
-		return nil, responseErr
-	}
-
-	runner.Results = results
-
-	return runner, nil
+func (rs RunnersService) GetRunnersResults(runnerId string) ([]*models.Result, *models.ResponseError) {
+	return rs.resultsRepository.QueryGetAllRunnersResults(runnerId)
 }
 
 func (rs RunnersService) GetRunnersBatch(country string, year string) ([]*models.Runner, *models.ResponseError) {

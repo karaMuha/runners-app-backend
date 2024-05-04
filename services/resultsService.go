@@ -141,6 +141,23 @@ func (rs ResultsService) DeleteResult(resultId string) *models.ResponseError {
 		return responseErr
 	}
 
+	if runner == nil {
+		repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
+		return &models.ResponseError{
+			Message: "Runner not found",
+			Status:  http.StatusNotFound,
+		}
+	}
+
+	runnersResults, responseErr := rs.resultsRepository.QueryGetAllRunnersResults(runner.ID)
+
+	if responseErr != nil {
+		repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
+		return responseErr
+	}
+
+	runner.Results = runnersResults
+
 	//Checking if the deleted result is personal best for the runner
 	if runner.PersonalBest == result.RaceResult {
 		personalBest, responseErr := rs.resultsRepository.QueryGetPersonalBestResults(result.RunnerID)
@@ -236,6 +253,15 @@ func (rs ResultsService) updateRunnersResult(result *models.Result, raceResult t
 			Status:  http.StatusNotFound,
 		}
 	}
+
+	runnersResults, responseErr := rs.resultsRepository.QueryGetAllRunnersResults(runner.ID)
+
+	if responseErr != nil {
+		repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
+		return responseErr
+	}
+
+	runner.Results = runnersResults
 
 	responseErr = updateRunnersPersonalBest(runner, result, raceResult)
 	if responseErr != nil {

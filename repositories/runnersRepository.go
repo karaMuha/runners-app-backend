@@ -115,43 +115,18 @@ func (rr RunnersRepository) QueryGetRunner(runnerId string) (*models.Runner, *mo
 			runners
 		WHERE
 			id = $1`
-	rows, err := rr.dbHandler.Query(query, runnerId)
-
-	if err != nil {
-		return nil, &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
+	row := rr.dbHandler.QueryRow(query, runnerId)
 
 	var id, firstName, lastName, country string
 	var personalBest, seasonBest sql.NullString
 	var age int
 	var isActive bool
-	count := 0
+	err := row.Scan(&id, &firstName, &lastName, &age, &isActive, &country, &personalBest, &seasonBest)
 
-	for rows.Next() {
-		count++
-		err := rows.Scan(&id, &firstName, &lastName, &age, &isActive, &country, &personalBest, &seasonBest)
-		if err != nil {
-			return nil, &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
-
-	if count == 0 {
-		return nil, &models.ResponseError{
-			Message: "Runner not found",
-			Status:  http.StatusNotFound,
-		}
-	}
-
-	err = rows.Err()
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
