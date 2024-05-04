@@ -56,52 +56,60 @@ func (rs RunnersService) CreateRunner(runner *models.Runner) (*models.Runner, *m
 	}, nil
 }
 
-func (rs RunnersService) UpdateRunner(runner *models.Runner) *models.ResponseError {
+func (rs RunnersService) UpdateRunner(runner *models.Runner) (int64, *models.ResponseError) {
 	responseErr := validateRunnerId(runner.ID)
 
 	if responseErr != nil {
-		return responseErr
+		return 0, responseErr
 	}
 
 	responseErr = validateRunner(runner)
 
 	if responseErr != nil {
-		return responseErr
+		return 0, responseErr
 	}
 
 	queryResult, responseErr := rs.runnersRepository.QueryUpdateRunner(runner)
 
 	if responseErr != nil {
-		return responseErr
+		return 0, responseErr
 	}
 
 	rowsAffected, err := queryResult.RowsAffected()
 
 	if err != nil {
-		return &models.ResponseError{
+		return 0, &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
 		}
 	}
 
-	if rowsAffected == 0 {
-		return &models.ResponseError{
-			Message: "Runner not found",
-			Status:  http.StatusNotFound,
-		}
-	}
-
-	return nil
+	return rowsAffected, nil
 }
 
-func (rs RunnersService) DeleteRunner(runnerId string) *models.ResponseError {
+func (rs RunnersService) DeleteRunner(runnerId string) (int64, *models.ResponseError) {
 	responseErr := validateRunnerId(runnerId)
 
 	if responseErr != nil {
-		return responseErr
+		return 0, responseErr
 	}
 
-	return rs.runnersRepository.QueryDeleteRunner(runnerId)
+	queryResult, responseErr := rs.runnersRepository.QueryDeleteRunner(runnerId)
+
+	if responseErr != nil {
+		return 0, responseErr
+	}
+
+	rowsAffected, err := queryResult.RowsAffected()
+
+	if err != nil {
+		return 0, &models.ResponseError{
+			Message: err.Error(),
+			Status:  http.StatusInternalServerError,
+		}
+	}
+
+	return rowsAffected, nil
 }
 
 func (rs RunnersService) GetRunner(runnerId string) (*models.Runner, *models.ResponseError) {

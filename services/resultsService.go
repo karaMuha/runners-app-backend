@@ -167,7 +167,7 @@ func (rs ResultsService) DeleteResult(resultId string) *models.ResponseError {
 		runner.SeasonBest = seasonBest
 	}
 
-	responseErr = rs.runnersRepository.QueryUpdateRunnerResult(runner)
+	_, responseErr = rs.runnersRepository.QueryUpdateRunnerResult(runner)
 
 	if responseErr != nil {
 		repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
@@ -249,7 +249,7 @@ func (rs ResultsService) updateRunnersResult(result *models.Result, raceResult t
 		}
 	}
 
-	responseErr = rs.runnersRepository.QueryUpdateRunnerResult(runner)
+	_, responseErr = rs.runnersRepository.QueryUpdateRunnerResult(runner)
 
 	if responseErr != nil {
 		return responseErr
