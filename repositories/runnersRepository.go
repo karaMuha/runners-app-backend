@@ -29,7 +29,7 @@ func (rr *RunnersRepository) ClearTransaction() {
 	rr.transaction = nil
 }
 
-func (rr RunnersRepository) QueryCreateRunner(runner *models.Runner) (*models.Runner, *models.ResponseError) {
+func (rr RunnersRepository) QueryCreateRunner(runner *models.Runner) *sql.Row {
 	query := `
 		INSERT INTO
 			runners(first_name, last_name, age, country)
@@ -38,49 +38,12 @@ func (rr RunnersRepository) QueryCreateRunner(runner *models.Runner) (*models.Ru
 		RETURNING
 			id, is_active`
 
-	rows, err := rr.dbHandler.Query(query, runner.FirstName, runner.LastName, runner.Age, runner.Country)
+	row := rr.dbHandler.QueryRow(query, runner.FirstName, runner.LastName, runner.Age, runner.Country)
 
-	if err != nil {
-		return nil, &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
-
-	var runnerId string
-	var isActive bool
-	for rows.Next() {
-		err := rows.Scan(&runnerId, &isActive)
-		if err != nil {
-			return nil, &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
-
-	err = rows.Err()
-
-	if err != nil {
-		return nil, &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	return &models.Runner{
-		ID:        runnerId,
-		FirstName: runner.FirstName,
-		LastName:  runner.LastName,
-		Age:       runner.Age,
-		IsActive:  isActive,
-		Country:   runner.Country,
-	}, nil
+	return row
 }
 
-func (rr RunnersRepository) QueryUpdateRunner(runner *models.Runner) *models.ResponseError {
+func (rr RunnersRepository) QueryUpdateRunner(runner *models.Runner) (sql.Result, *models.ResponseError) {
 	query := `
 		UPDATE
 			runners
@@ -94,29 +57,13 @@ func (rr RunnersRepository) QueryUpdateRunner(runner *models.Runner) *models.Res
 	res, err := rr.dbHandler.Exec(query, runner.FirstName, runner.LastName, runner.Age, runner.Country, runner.ID)
 
 	if err != nil {
-		return &models.ResponseError{
+		return nil, &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
 		}
 	}
 
-	rowsAffected, err := res.RowsAffected()
-
-	if err != nil {
-		return &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	if rowsAffected == 0 {
-		return &models.ResponseError{
-			Message: "Runner not found",
-			Status:  http.StatusNotFound,
-		}
-	}
-
-	return nil
+	return res, nil
 }
 
 func (rr RunnersRepository) QueryUpdateRunnerResult(runner *models.Runner) *models.ResponseError {
