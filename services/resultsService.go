@@ -46,7 +46,7 @@ func (rs ResultsService) CreateResult(result *models.Result) (*models.Result, *m
 		}
 	}
 
-	response, responseErr := rs.resultsRepository.QueryCreateResult(result)
+	createdResult, responseErr := rs.resultsRepository.QueryCreateResult(result)
 
 	if responseErr != nil {
 		repositories.RollbackTransaction(rs.runnersRepository, rs.resultsRepository)
@@ -62,7 +62,7 @@ func (rs ResultsService) CreateResult(result *models.Result) (*models.Result, *m
 
 	repositories.CommitTransaction(rs.runnersRepository, rs.resultsRepository)
 
-	return response, nil
+	return createdResult, nil
 }
 
 func (rs ResultsService) UpdateResult(result *models.Result) *models.ResponseError {

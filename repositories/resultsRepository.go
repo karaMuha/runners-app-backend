@@ -37,29 +37,11 @@ func (rr ResultsRepository) QueryCreateResult(result *models.Result) (*models.Re
 			($1, $2, $3, $4, $5)
 		RETURNING
 			id`
-	rows, err := rr.dbHandler.Query(query, result.RunnerID, result.RaceResult, result.Location, result.Position, result.Year)
-
-	if err != nil {
-		return nil, &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
+	row := rr.dbHandler.QueryRow(query, result.RunnerID, result.RaceResult, result.Location, result.Position, result.Year)
 
 	var resultId string
-	for rows.Next() {
-		err := rows.Scan(&resultId)
-		if err != nil {
-			return nil, &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
+	err := row.Scan(&resultId)
 
-	err = rows.Err()
 	if err != nil {
 		return nil, &models.ResponseError{
 			Message: err.Error(),
@@ -225,30 +207,15 @@ func (rr ResultsRepository) QueryGetPersonalBestResults(runnerId string) (string
 			results
 		WHERE
 			runner_id = $1`
-	rows, err := rr.dbHandler.Query(query, runnerId)
-
-	if err != nil {
-		return "", &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
+	row := rr.dbHandler.QueryRow(query, runnerId)
 
 	var raceResult string
-	for rows.Next() {
-		err := rows.Scan(&raceResult)
-		if err != nil {
-			return "", &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
+	err := row.Scan(&raceResult)
 
-	err = rows.Err()
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
 		return "", &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
@@ -268,30 +235,15 @@ func (rr ResultsRepository) QueryGetSeasonBestResults(runnerId string, year int)
 			runner_id = $1
 			AND
 			year = $2`
-	rows, err := rr.dbHandler.Query(query, runnerId, year)
-
-	if err != nil {
-		return "", &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
+	row := rr.dbHandler.QueryRow(query, runnerId, year)
 
 	var raceResult string
-	for rows.Next() {
-		err := rows.Scan(&raceResult)
-		if err != nil {
-			return "", &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
+	err := row.Scan(&raceResult)
 
-	err = rows.Err()
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
 		return "", &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
