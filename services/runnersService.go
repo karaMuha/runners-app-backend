@@ -33,7 +33,7 @@ func (rs RunnersService) CreateRunner(runner *models.Runner) (*models.Runner, *m
 		return nil, responseErr
 	}
 
-	return rs.runnersRepository.CreateRunner(runner)
+	return rs.runnersRepository.QueryCreateRunner(runner)
 }
 
 func (rs RunnersService) UpdateRunner(runner *models.Runner) *models.ResponseError {
@@ -49,7 +49,7 @@ func (rs RunnersService) UpdateRunner(runner *models.Runner) *models.ResponseErr
 		return responseErr
 	}
 
-	return rs.runnersRepository.UpdateRunner(runner)
+	return rs.runnersRepository.QueryUpdateRunner(runner)
 }
 
 func (rs RunnersService) DeleteRunner(runnerId string) *models.ResponseError {
@@ -59,7 +59,7 @@ func (rs RunnersService) DeleteRunner(runnerId string) *models.ResponseError {
 		return responseErr
 	}
 
-	return rs.runnersRepository.DeleteRunner(runnerId)
+	return rs.runnersRepository.QueryDeleteRunner(runnerId)
 }
 
 func (rs RunnersService) GetRunner(runnerId string) (*models.Runner, *models.ResponseError) {
@@ -69,13 +69,13 @@ func (rs RunnersService) GetRunner(runnerId string) (*models.Runner, *models.Res
 		return nil, responseErr
 	}
 
-	runner, responseErr := rs.runnersRepository.GetRunner(runnerId)
+	runner, responseErr := rs.runnersRepository.QueryGetRunner(runnerId)
 
 	if responseErr != nil {
 		return nil, responseErr
 	}
 
-	results, responseErr := rs.resultsRepository.GetAllRunnersResults(runnerId)
+	results, responseErr := rs.resultsRepository.QueryGetAllRunnersResults(runnerId)
 
 	if responseErr != nil {
 		return nil, responseErr
@@ -96,7 +96,7 @@ func (rs RunnersService) GetRunnersBatch(country string, year string) ([]*models
 
 	if country != "" {
 		fmt.Println(country)
-		return rs.runnersRepository.GetRunnersByCountry(country)
+		return rs.runnersRepository.QueryGetRunnersByCountry(country)
 	}
 
 	if year != "" {
@@ -118,10 +118,10 @@ func (rs RunnersService) GetRunnersBatch(country string, year string) ([]*models
 			}
 		}
 
-		return rs.runnersRepository.GetRunnersByYear(intYear)
+		return rs.runnersRepository.QueryGetRunnersByYear(intYear)
 	}
 
-	return rs.runnersRepository.GetAllRunners()
+	return rs.runnersRepository.QueryGetAllRunners()
 }
 
 func validateRunner(runner *models.Runner) *models.ResponseError {

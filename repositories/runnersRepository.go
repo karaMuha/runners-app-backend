@@ -29,7 +29,7 @@ func (rr *RunnersRepository) ClearTransaction() {
 	rr.transaction = nil
 }
 
-func (rr RunnersRepository) CreateRunner(runner *models.Runner) (*models.Runner, *models.ResponseError) {
+func (rr RunnersRepository) QueryCreateRunner(runner *models.Runner) (*models.Runner, *models.ResponseError) {
 	query := `
 		INSERT INTO
 			runners(first_name, last_name, age, country)
@@ -80,7 +80,7 @@ func (rr RunnersRepository) CreateRunner(runner *models.Runner) (*models.Runner,
 	}, nil
 }
 
-func (rr RunnersRepository) UpdateRunner(runner *models.Runner) *models.ResponseError {
+func (rr RunnersRepository) QueryUpdateRunner(runner *models.Runner) *models.ResponseError {
 	query := `
 		UPDATE
 			runners
@@ -119,7 +119,7 @@ func (rr RunnersRepository) UpdateRunner(runner *models.Runner) *models.Response
 	return nil
 }
 
-func (rr RunnersRepository) UpdateRunnerResult(runner *models.Runner) *models.ResponseError {
+func (rr RunnersRepository) QueryUpdateRunnerResult(runner *models.Runner) *models.ResponseError {
 	query := `
 		UPDATE
 			runners
@@ -140,7 +140,7 @@ func (rr RunnersRepository) UpdateRunnerResult(runner *models.Runner) *models.Re
 	return nil
 }
 
-func (rr RunnersRepository) DeleteRunner(runnerId string) *models.ResponseError {
+func (rr RunnersRepository) QueryDeleteRunner(runnerId string) *models.ResponseError {
 	query := `
 		UPDATE
 			runners
@@ -176,7 +176,7 @@ func (rr RunnersRepository) DeleteRunner(runnerId string) *models.ResponseError 
 	return nil
 }
 
-func (rr RunnersRepository) GetRunner(runnerId string) (*models.Runner, *models.ResponseError) {
+func (rr RunnersRepository) QueryGetRunner(runnerId string) (*models.Runner, *models.ResponseError) {
 	query := `
 		SELECT
 			*
@@ -239,7 +239,7 @@ func (rr RunnersRepository) GetRunner(runnerId string) (*models.Runner, *models.
 	}, nil
 }
 
-func (rr RunnersRepository) GetAllRunners() ([]*models.Runner, *models.ResponseError) {
+func (rr RunnersRepository) QueryGetAllRunners() ([]*models.Runner, *models.ResponseError) {
 	query := `
 		SELECT
 			*
@@ -295,7 +295,7 @@ func (rr RunnersRepository) GetAllRunners() ([]*models.Runner, *models.ResponseE
 	return runners, nil
 }
 
-func (rr RunnersRepository) GetRunnersByCountry(country string) ([]*models.Runner, *models.ResponseError) {
+func (rr RunnersRepository) QueryGetRunnersByCountry(country string) ([]*models.Runner, *models.ResponseError) {
 	query := `
 		SELECT
 			id,
@@ -363,7 +363,7 @@ func (rr RunnersRepository) GetRunnersByCountry(country string) ([]*models.Runne
 	return runners, nil
 }
 
-func (rr RunnersRepository) GetRunnersByYear(year int) ([]*models.Runner, *models.ResponseError) {
+func (rr RunnersRepository) QueryGetRunnersByYear(year int) ([]*models.Runner, *models.ResponseError) {
 	query := `
 		SELECT
 			runners.id,

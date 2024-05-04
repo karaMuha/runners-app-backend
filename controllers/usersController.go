@@ -1,11 +1,12 @@
 package controllers
 
 import (
-	"log"
 	"net/http"
 	"runners/interfaces"
 	"runners/metrics"
 	"strconv"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 const ROLE_ADMIN = "admin"
@@ -27,12 +28,11 @@ func (uc UsersController) Login(w http.ResponseWriter, r *http.Request) {
 	username, password, ok := r.BasicAuth()
 	if !ok {
 		metrics.HttpResponsesCounter.WithLabelValues("400").Inc()
-		log.Println("Error while reading credentials")
 		http.Error(w, "Error while reading credentials", 400)
 		return
 	}
 
-	userId, responseErr := uc.usersService.GetUser(username, password)
+	userPassword, responseErr := uc.usersService.GetUser(username)
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()
@@ -40,13 +40,21 @@ func (uc UsersController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if userId == "" {
+	if userPassword == "" {
 		metrics.HttpResponsesCounter.WithLabelValues("404").Inc()
 		http.Error(w, "User not found", 404)
 		return
 	}
 
-	accessToken, responseErr := uc.usersService.GenerateAccessToken(username, userId)
+	err := bcrypt.CompareHashAndPassword([]byte(userPassword), []byte(password))
+
+	if err != nil {
+		metrics.HttpResponsesCounter.WithLabelValues("401").Inc()
+		http.Error(w, "Login failed", http.StatusUnauthorized)
+		return
+	}
+
+	accessToken, responseErr := uc.usersService.GenerateAccessToken(username)
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()

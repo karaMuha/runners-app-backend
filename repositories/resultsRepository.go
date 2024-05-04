@@ -29,7 +29,7 @@ func (rr *ResultsRepository) ClearTransaction() {
 	rr.transaction = nil
 }
 
-func (rr ResultsRepository) CreateResult(result *models.Result) (*models.Result, *models.ResponseError) {
+func (rr ResultsRepository) QueryCreateResult(result *models.Result) (*models.Result, *models.ResponseError) {
 	query := `
 		INSERT INTO
 			results(runner_id, race_result, location, position, year)
@@ -77,7 +77,7 @@ func (rr ResultsRepository) CreateResult(result *models.Result) (*models.Result,
 	}, nil
 }
 
-func (rr ResultsRepository) UpdateResult(result *models.Result) *models.ResponseError {
+func (rr ResultsRepository) QueryUpdateResult(result *models.Result) *models.ResponseError {
 	query := `
 		UPDATE
 			results
@@ -117,7 +117,7 @@ func (rr ResultsRepository) UpdateResult(result *models.Result) *models.Response
 	return nil
 }
 
-func (rr ResultsRepository) DeleteResult(resultId string) (*models.Result, *models.ResponseError) {
+func (rr ResultsRepository) QueryDeleteResult(resultId string) (*models.Result, *models.ResponseError) {
 	query := `
 		DELETE FROM
 			results
@@ -164,7 +164,7 @@ func (rr ResultsRepository) DeleteResult(resultId string) (*models.Result, *mode
 	}, nil
 }
 
-func (rr ResultsRepository) GetAllRunnersResults(runnerId string) ([]*models.Result, *models.ResponseError) {
+func (rr ResultsRepository) QueryGetAllRunnersResults(runnerId string) ([]*models.Result, *models.ResponseError) {
 	query := `
 		SELECT
 			id, race_result, location, position, year
@@ -217,7 +217,7 @@ func (rr ResultsRepository) GetAllRunnersResults(runnerId string) ([]*models.Res
 	return results, nil
 }
 
-func (rr ResultsRepository) GetPersonalBestResults(runnerId string) (string, *models.ResponseError) {
+func (rr ResultsRepository) QueryGetPersonalBestResults(runnerId string) (string, *models.ResponseError) {
 	query := `
 		SELECT
 			MIN(race_result)
@@ -258,7 +258,7 @@ func (rr ResultsRepository) GetPersonalBestResults(runnerId string) (string, *mo
 	return raceResult, nil
 }
 
-func (rr ResultsRepository) GetSeasonBestResults(runnerId string, year int) (string, *models.ResponseError) {
+func (rr ResultsRepository) QueryGetSeasonBestResults(runnerId string, year int) (string, *models.ResponseError) {
 	query := `
 		SELECT
 			MIN(race_result)

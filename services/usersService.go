@@ -21,22 +21,22 @@ func NewUsersService(usersRepository *repositories.UsersRepository) *UsersServic
 	}
 }
 
-func (us UsersService) GetUser(username string, password string) (string, *models.ResponseError) {
-	if strings.TrimSpace(username) == "" || strings.TrimSpace(password) == "" {
+func (us UsersService) GetUser(username string) (string, *models.ResponseError) {
+	if strings.TrimSpace(username) == "" {
 		return "", &models.ResponseError{
 			Message: "Invalid username or password",
 			Status:  http.StatusBadRequest,
 		}
 	}
 
-	queryResult := us.usersRepository.QueryGetUserId(username, password)
+	queryResult := us.usersRepository.QueryGetUser(username)
 
-	var userId string
-	err := queryResult.Scan(&userId)
+	var password string
+	err := queryResult.Scan(&password)
 
 	switch err {
 	case nil:
-		return userId, nil
+		return password, nil
 	case sql.ErrNoRows:
 		return "", nil
 	default:
@@ -55,7 +55,7 @@ func (us UsersService) Logout(accessToken string) *models.ResponseError {
 		}
 	}
 
-	return us.usersRepository.RemoveAccessToken(accessToken)
+	return us.usersRepository.QueryRemoveAccessToken(accessToken)
 }
 
 func (us UsersService) AuthorizeUser(accessToken string, expectedRoles []string) (bool, *models.ResponseError) {
@@ -66,14 +66,21 @@ func (us UsersService) AuthorizeUser(accessToken string, expectedRoles []string)
 		}
 	}
 
-	role, responseErr := us.usersRepository.GetUserRole(accessToken)
-	if responseErr != nil {
-		return false, responseErr
+	queryResult := us.usersRepository.QueryGetUserRole(accessToken)
+
+	var role string
+	err := queryResult.Scan(&role)
+
+	if err != nil {
+		return false, &models.ResponseError{
+			Message: "User in not logged in",
+			Status:  http.StatusUnauthorized,
+		}
 	}
 
 	if role == "" {
 		return false, &models.ResponseError{
-			Message: "Failed to authorize user",
+			Message: "User has no role",
 			Status:  http.StatusUnauthorized,
 		}
 	}
@@ -87,7 +94,7 @@ func (us UsersService) AuthorizeUser(accessToken string, expectedRoles []string)
 	return false, nil
 }
 
-func (us UsersService) GenerateAccessToken(username string, userId string) (string, *models.ResponseError) {
+func (us UsersService) GenerateAccessToken(username string) (string, *models.ResponseError) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(username), bcrypt.DefaultCost)
 	if err != nil {
 		return "", &models.ResponseError{
@@ -98,7 +105,7 @@ func (us UsersService) GenerateAccessToken(username string, userId string) (stri
 
 	accessToken := base64.StdEncoding.EncodeToString(hash)
 
-	us.usersRepository.SetAccessToken(accessToken, userId)
+	us.usersRepository.QuerySetAccessToken(accessToken, username)
 
 	return accessToken, nil
 }

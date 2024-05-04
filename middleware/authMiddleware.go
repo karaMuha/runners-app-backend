@@ -16,7 +16,7 @@ func AuthorizeRequest(req *http.Request, usersService interfaces.UsersService, r
 
 	if !auth {
 		return &models.ResponseError{
-			Message: "Insufficient permissions",
+			Message: "Not authorized",
 			Status:  http.StatusUnauthorized,
 		}
 	}
