@@ -33,33 +33,83 @@ func (rs RunnersService) CreateRunner(runner *models.Runner) (*models.Runner, *m
 		return nil, responseErr
 	}
 
-	return rs.runnersRepository.CreateRunner(runner)
+	queryResult := rs.runnersRepository.QueryCreateRunner(runner)
+
+	var runnerId string
+	var isActive bool
+	err := queryResult.Scan(&runnerId, &isActive)
+
+	if err != nil {
+		return nil, &models.ResponseError{
+			Message: err.Error(),
+			Status:  http.StatusInternalServerError,
+		}
+	}
+
+	return &models.Runner{
+		ID:        runnerId,
+		FirstName: runner.FirstName,
+		LastName:  runner.LastName,
+		Age:       runner.Age,
+		IsActive:  isActive,
+		Country:   runner.Country,
+	}, nil
 }
 
-func (rs RunnersService) UpdateRunner(runner *models.Runner) *models.ResponseError {
+func (rs RunnersService) UpdateRunner(runner *models.Runner) (int64, *models.ResponseError) {
 	responseErr := validateRunnerId(runner.ID)
 
 	if responseErr != nil {
-		return responseErr
+		return 0, responseErr
 	}
 
 	responseErr = validateRunner(runner)
 
 	if responseErr != nil {
-		return responseErr
+		return 0, responseErr
 	}
 
-	return rs.runnersRepository.UpdateRunner(runner)
+	queryResult, responseErr := rs.runnersRepository.QueryUpdateRunner(runner)
+
+	if responseErr != nil {
+		return 0, responseErr
+	}
+
+	rowsAffected, err := queryResult.RowsAffected()
+
+	if err != nil {
+		return 0, &models.ResponseError{
+			Message: err.Error(),
+			Status:  http.StatusInternalServerError,
+		}
+	}
+
+	return rowsAffected, nil
 }
 
-func (rs RunnersService) DeleteRunner(runnerId string) *models.ResponseError {
+func (rs RunnersService) DeleteRunner(runnerId string) (int64, *models.ResponseError) {
 	responseErr := validateRunnerId(runnerId)
 
 	if responseErr != nil {
-		return responseErr
+		return 0, responseErr
 	}
 
-	return rs.runnersRepository.DeleteRunner(runnerId)
+	queryResult, responseErr := rs.runnersRepository.QueryDeleteRunner(runnerId)
+
+	if responseErr != nil {
+		return 0, responseErr
+	}
+
+	rowsAffected, err := queryResult.RowsAffected()
+
+	if err != nil {
+		return 0, &models.ResponseError{
+			Message: err.Error(),
+			Status:  http.StatusInternalServerError,
+		}
+	}
+
+	return rowsAffected, nil
 }
 
 func (rs RunnersService) GetRunner(runnerId string) (*models.Runner, *models.ResponseError) {
@@ -69,21 +119,11 @@ func (rs RunnersService) GetRunner(runnerId string) (*models.Runner, *models.Res
 		return nil, responseErr
 	}
 
-	runner, responseErr := rs.runnersRepository.GetRunner(runnerId)
+	return rs.runnersRepository.QueryGetRunner(runnerId)
+}
 
-	if responseErr != nil {
-		return nil, responseErr
-	}
-
-	results, responseErr := rs.resultsRepository.GetAllRunnersResults(runnerId)
-
-	if responseErr != nil {
-		return nil, responseErr
-	}
-
-	runner.Results = results
-
-	return runner, nil
+func (rs RunnersService) GetRunnersResults(runnerId string) ([]*models.Result, *models.ResponseError) {
+	return rs.resultsRepository.QueryGetAllRunnersResults(runnerId)
 }
 
 func (rs RunnersService) GetRunnersBatch(country string, year string) ([]*models.Runner, *models.ResponseError) {
@@ -96,7 +136,7 @@ func (rs RunnersService) GetRunnersBatch(country string, year string) ([]*models
 
 	if country != "" {
 		fmt.Println(country)
-		return rs.runnersRepository.GetRunnersByCountry(country)
+		return rs.runnersRepository.QueryGetRunnersByCountry(country)
 	}
 
 	if year != "" {
@@ -118,10 +158,10 @@ func (rs RunnersService) GetRunnersBatch(country string, year string) ([]*models
 			}
 		}
 
-		return rs.runnersRepository.GetRunnersByYear(intYear)
+		return rs.runnersRepository.QueryGetRunnersByYear(intYear)
 	}
 
-	return rs.runnersRepository.GetAllRunners()
+	return rs.runnersRepository.QueryGetAllRunners()
 }
 
 func validateRunner(runner *models.Runner) *models.ResponseError {

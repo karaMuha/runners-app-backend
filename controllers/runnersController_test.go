@@ -68,7 +68,12 @@ func initTestRouter(dbHandler *sql.DB) *http.ServeMux {
 	usersController := NewUsersController(usersService)
 
 	router := http.NewServeMux()
+	router.HandleFunc("POST /runner", runnersController.CreateRunner)
+	router.HandleFunc("PUT /runner", runnersController.UpdateRunner)
+	router.HandleFunc("DELETE /runner/{id}", runnersController.DeleteRunner)
+	router.HandleFunc("GET /runner/{id}", runnersController.GetRunner)
 	router.HandleFunc("GET /runner", runnersController.GetRunnersBatch)
+
 	router.HandleFunc("POST /login", usersController.Login)
 
 	return router
@@ -95,7 +100,9 @@ func (suite *RunnersControllerTestSuit) TestGetRunnersResponse() {
 	assert.Equal(t, http.StatusOK, recorder.Result().StatusCode)
 
 	var runners []*models.Runner
-	json.Unmarshal(recorder.Body.Bytes(), &runners)
+	err := json.Unmarshal(recorder.Body.Bytes(), &runners)
+
+	require.NoError(t, err)
 
 	assert.NotEmpty(t, runners)
 	assert.Equal(t, 4, len(runners))
