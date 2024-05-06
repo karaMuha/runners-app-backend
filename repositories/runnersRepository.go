@@ -29,7 +29,7 @@ func (rr *RunnersRepository) ClearTransaction() {
 	rr.transaction = nil
 }
 
-func (rr RunnersRepository) CreateRunner(runner *models.Runner) (*models.Runner, *models.ResponseError) {
+func (rr RunnersRepository) QueryCreateRunner(runner *models.Runner) *sql.Row {
 	query := `
 		INSERT INTO
 			runners(first_name, last_name, age, country)
@@ -38,49 +38,12 @@ func (rr RunnersRepository) CreateRunner(runner *models.Runner) (*models.Runner,
 		RETURNING
 			id, is_active`
 
-	rows, err := rr.dbHandler.Query(query, runner.FirstName, runner.LastName, runner.Age, runner.Country)
+	row := rr.dbHandler.QueryRow(query, runner.FirstName, runner.LastName, runner.Age, runner.Country)
 
-	if err != nil {
-		return nil, &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
-
-	var runnerId string
-	var isActive bool
-	for rows.Next() {
-		err := rows.Scan(&runnerId, &isActive)
-		if err != nil {
-			return nil, &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
-
-	err = rows.Err()
-
-	if err != nil {
-		return nil, &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	return &models.Runner{
-		ID:        runnerId,
-		FirstName: runner.FirstName,
-		LastName:  runner.LastName,
-		Age:       runner.Age,
-		IsActive:  isActive,
-		Country:   runner.Country,
-	}, nil
+	return row
 }
 
-func (rr RunnersRepository) UpdateRunner(runner *models.Runner) *models.ResponseError {
+func (rr RunnersRepository) QueryUpdateRunner(runner *models.Runner) (sql.Result, *models.ResponseError) {
 	query := `
 		UPDATE
 			runners
@@ -94,32 +57,16 @@ func (rr RunnersRepository) UpdateRunner(runner *models.Runner) *models.Response
 	res, err := rr.dbHandler.Exec(query, runner.FirstName, runner.LastName, runner.Age, runner.Country, runner.ID)
 
 	if err != nil {
-		return &models.ResponseError{
+		return nil, &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
 		}
 	}
 
-	rowsAffected, err := res.RowsAffected()
-
-	if err != nil {
-		return &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	if rowsAffected == 0 {
-		return &models.ResponseError{
-			Message: "Runner not found",
-			Status:  http.StatusNotFound,
-		}
-	}
-
-	return nil
+	return res, nil
 }
 
-func (rr RunnersRepository) UpdateRunnerResult(runner *models.Runner) *models.ResponseError {
+func (rr RunnersRepository) QueryUpdateRunnerResult(runner *models.Runner) (sql.Result, *models.ResponseError) {
 	query := `
 		UPDATE
 			runners
@@ -128,19 +75,19 @@ func (rr RunnersRepository) UpdateRunnerResult(runner *models.Runner) *models.Re
 			season_best = $2
 		WHERE
 			id = $3`
-	_, err := rr.transaction.Exec(query, runner.PersonalBest, runner.SeasonBest, runner.ID)
+	res, err := rr.transaction.Exec(query, runner.PersonalBest, runner.SeasonBest, runner.ID)
 
 	if err != nil {
-		return &models.ResponseError{
+		return nil, &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
 		}
 	}
 
-	return nil
+	return res, nil
 }
 
-func (rr RunnersRepository) DeleteRunner(runnerId string) *models.ResponseError {
+func (rr RunnersRepository) QueryDeleteRunner(runnerId string) (sql.Result, *models.ResponseError) {
 	query := `
 		UPDATE
 			runners
@@ -151,32 +98,16 @@ func (rr RunnersRepository) DeleteRunner(runnerId string) *models.ResponseError 
 	res, err := rr.dbHandler.Exec(query, runnerId)
 
 	if err != nil {
-		return &models.ResponseError{
+		return nil, &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
 		}
 	}
 
-	rowsAffected, err := res.RowsAffected()
-
-	if err != nil {
-		return &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	if rowsAffected == 0 {
-		return &models.ResponseError{
-			Message: "Runner not found",
-			Status:  http.StatusNotFound,
-		}
-	}
-
-	return nil
+	return res, nil
 }
 
-func (rr RunnersRepository) GetRunner(runnerId string) (*models.Runner, *models.ResponseError) {
+func (rr RunnersRepository) QueryGetRunner(runnerId string) (*models.Runner, *models.ResponseError) {
 	query := `
 		SELECT
 			*
@@ -184,43 +115,18 @@ func (rr RunnersRepository) GetRunner(runnerId string) (*models.Runner, *models.
 			runners
 		WHERE
 			id = $1`
-	rows, err := rr.dbHandler.Query(query, runnerId)
-
-	if err != nil {
-		return nil, &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
+	row := rr.dbHandler.QueryRow(query, runnerId)
 
 	var id, firstName, lastName, country string
 	var personalBest, seasonBest sql.NullString
 	var age int
 	var isActive bool
-	count := 0
+	err := row.Scan(&id, &firstName, &lastName, &age, &isActive, &country, &personalBest, &seasonBest)
 
-	for rows.Next() {
-		count++
-		err := rows.Scan(&id, &firstName, &lastName, &age, &isActive, &country, &personalBest, &seasonBest)
-		if err != nil {
-			return nil, &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
-
-	if count == 0 {
-		return nil, &models.ResponseError{
-			Message: "Runner not found",
-			Status:  http.StatusNotFound,
-		}
-	}
-
-	err = rows.Err()
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
@@ -239,7 +145,7 @@ func (rr RunnersRepository) GetRunner(runnerId string) (*models.Runner, *models.
 	}, nil
 }
 
-func (rr RunnersRepository) GetAllRunners() ([]*models.Runner, *models.ResponseError) {
+func (rr RunnersRepository) QueryGetAllRunners() ([]*models.Runner, *models.ResponseError) {
 	query := `
 		SELECT
 			*
@@ -295,7 +201,7 @@ func (rr RunnersRepository) GetAllRunners() ([]*models.Runner, *models.ResponseE
 	return runners, nil
 }
 
-func (rr RunnersRepository) GetRunnersByCountry(country string) ([]*models.Runner, *models.ResponseError) {
+func (rr RunnersRepository) QueryGetRunnersByCountry(country string) ([]*models.Runner, *models.ResponseError) {
 	query := `
 		SELECT
 			id,
@@ -363,7 +269,7 @@ func (rr RunnersRepository) GetRunnersByCountry(country string) ([]*models.Runne
 	return runners, nil
 }
 
-func (rr RunnersRepository) GetRunnersByYear(year int) ([]*models.Runner, *models.ResponseError) {
+func (rr RunnersRepository) QueryGetRunnersByYear(year int) ([]*models.Runner, *models.ResponseError) {
 	query := `
 		SELECT
 			runners.id,

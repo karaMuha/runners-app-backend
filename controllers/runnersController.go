@@ -85,11 +85,17 @@ func (rc RunnersController) UpdateRunner(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	responseErr = rc.runnersService.UpdateRunner(&runner)
+	rowsAffected, responseErr := rc.runnersService.UpdateRunner(&runner)
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
 		http.Error(w, responseErr.Message, responseErr.Status)
+		return
+	}
+
+	if rowsAffected == 0 {
+		metrics.HttpResponsesCounter.WithLabelValues("404").Inc()
+		http.Error(w, "Runner not found", 404)
 		return
 	}
 
@@ -110,11 +116,17 @@ func (rc RunnersController) DeleteRunner(w http.ResponseWriter, r *http.Request)
 
 	runnerId := r.PathValue("id")
 
-	responseErr = rc.runnersService.DeleteRunner(runnerId)
+	rowsAffected, responseErr := rc.runnersService.DeleteRunner(runnerId)
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
 		http.Error(w, responseErr.Message, responseErr.Status)
+		return
+	}
+
+	if rowsAffected == 0 {
+		metrics.HttpResponsesCounter.WithLabelValues("404").Inc()
+		http.Error(w, "Runner not found", 404)
 		return
 	}
 
@@ -135,7 +147,7 @@ func (rc RunnersController) GetRunner(w http.ResponseWriter, r *http.Request) {
 
 	runnerId := r.PathValue("id")
 
-	response, responseErr := rc.runnersService.GetRunner(runnerId)
+	runner, responseErr := rc.runnersService.GetRunner(runnerId)
 
 	if responseErr != nil {
 		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
@@ -143,7 +155,23 @@ func (rc RunnersController) GetRunner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responseJson, err := json.Marshal(response)
+	if runner == nil {
+		metrics.HttpResponsesCounter.WithLabelValues("404").Inc()
+		http.Error(w, "Runner not found", 404)
+		return
+	}
+
+	runnersResults, responseErr := rc.runnersService.GetRunnersResults(runner.ID)
+
+	if responseErr != nil {
+		metrics.HttpResponsesCounter.WithLabelValues(strconv.Itoa(responseErr.Status)).Inc()
+		http.Error(w, responseErr.Message, responseErr.Status)
+		return
+	}
+
+	runner.Results = runnersResults
+
+	responseJson, err := json.Marshal(runner)
 
 	if err != nil {
 		metrics.HttpResponsesCounter.WithLabelValues("500").Inc()

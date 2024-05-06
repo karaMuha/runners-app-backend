@@ -29,7 +29,7 @@ func (rr *ResultsRepository) ClearTransaction() {
 	rr.transaction = nil
 }
 
-func (rr ResultsRepository) CreateResult(result *models.Result) (*models.Result, *models.ResponseError) {
+func (rr ResultsRepository) QueryCreateResult(result *models.Result) (*models.Result, *models.ResponseError) {
 	query := `
 		INSERT INTO
 			results(runner_id, race_result, location, position, year)
@@ -37,29 +37,11 @@ func (rr ResultsRepository) CreateResult(result *models.Result) (*models.Result,
 			($1, $2, $3, $4, $5)
 		RETURNING
 			id`
-	rows, err := rr.dbHandler.Query(query, result.RunnerID, result.RaceResult, result.Location, result.Position, result.Year)
-
-	if err != nil {
-		return nil, &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
+	row := rr.dbHandler.QueryRow(query, result.RunnerID, result.RaceResult, result.Location, result.Position, result.Year)
 
 	var resultId string
-	for rows.Next() {
-		err := rows.Scan(&resultId)
-		if err != nil {
-			return nil, &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
+	err := row.Scan(&resultId)
 
-	err = rows.Err()
 	if err != nil {
 		return nil, &models.ResponseError{
 			Message: err.Error(),
@@ -77,7 +59,7 @@ func (rr ResultsRepository) CreateResult(result *models.Result) (*models.Result,
 	}, nil
 }
 
-func (rr ResultsRepository) UpdateResult(result *models.Result) *models.ResponseError {
+func (rr ResultsRepository) QueryUpdateResult(result *models.Result) *models.ResponseError {
 	query := `
 		UPDATE
 			results
@@ -117,7 +99,7 @@ func (rr ResultsRepository) UpdateResult(result *models.Result) *models.Response
 	return nil
 }
 
-func (rr ResultsRepository) DeleteResult(resultId string) (*models.Result, *models.ResponseError) {
+func (rr ResultsRepository) QueryDeleteResult(resultId string) (*models.Result, *models.ResponseError) {
 	query := `
 		DELETE FROM
 			results
@@ -125,31 +107,19 @@ func (rr ResultsRepository) DeleteResult(resultId string) (*models.Result, *mode
 			id = $1
 		RETURNING
 			runner_id, race_result, year`
-	rows, err := rr.dbHandler.Query(query, resultId)
-
-	if err != nil {
-		return nil, &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
+	row := rr.dbHandler.QueryRow(query, resultId)
 
 	var runnerId, raceResult string
 	var year int
-	for rows.Next() {
-		err := rows.Scan(&runnerId, &raceResult, &year)
-		if err != nil {
+	err := row.Scan(&runnerId, &raceResult, &year)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
 			return nil, &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
+				Message: "Race result not found",
+				Status:  http.StatusNotFound,
 			}
 		}
-	}
-
-	err = rows.Err()
-	if err != nil {
 		return nil, &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
@@ -164,7 +134,7 @@ func (rr ResultsRepository) DeleteResult(resultId string) (*models.Result, *mode
 	}, nil
 }
 
-func (rr ResultsRepository) GetAllRunnersResults(runnerId string) ([]*models.Result, *models.ResponseError) {
+func (rr ResultsRepository) QueryGetAllRunnersResults(runnerId string) ([]*models.Result, *models.ResponseError) {
 	query := `
 		SELECT
 			id, race_result, location, position, year
@@ -217,7 +187,7 @@ func (rr ResultsRepository) GetAllRunnersResults(runnerId string) ([]*models.Res
 	return results, nil
 }
 
-func (rr ResultsRepository) GetPersonalBestResults(runnerId string) (string, *models.ResponseError) {
+func (rr ResultsRepository) QueryGetPersonalBestResults(runnerId string) (string, *models.ResponseError) {
 	query := `
 		SELECT
 			MIN(race_result)
@@ -225,30 +195,15 @@ func (rr ResultsRepository) GetPersonalBestResults(runnerId string) (string, *mo
 			results
 		WHERE
 			runner_id = $1`
-	rows, err := rr.dbHandler.Query(query, runnerId)
-
-	if err != nil {
-		return "", &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
+	row := rr.dbHandler.QueryRow(query, runnerId)
 
 	var raceResult string
-	for rows.Next() {
-		err := rows.Scan(&raceResult)
-		if err != nil {
-			return "", &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
+	err := row.Scan(&raceResult)
 
-	err = rows.Err()
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
 		return "", &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
@@ -258,7 +213,7 @@ func (rr ResultsRepository) GetPersonalBestResults(runnerId string) (string, *mo
 	return raceResult, nil
 }
 
-func (rr ResultsRepository) GetSeasonBestResults(runnerId string, year int) (string, *models.ResponseError) {
+func (rr ResultsRepository) QueryGetSeasonBestResults(runnerId string, year int) (string, *models.ResponseError) {
 	query := `
 		SELECT
 			MIN(race_result)
@@ -268,30 +223,15 @@ func (rr ResultsRepository) GetSeasonBestResults(runnerId string, year int) (str
 			runner_id = $1
 			AND
 			year = $2`
-	rows, err := rr.dbHandler.Query(query, runnerId, year)
-
-	if err != nil {
-		return "", &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
+	row := rr.dbHandler.QueryRow(query, runnerId, year)
 
 	var raceResult string
-	for rows.Next() {
-		err := rows.Scan(&raceResult)
-		if err != nil {
-			return "", &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
+	err := row.Scan(&raceResult)
 
-	err = rows.Err()
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
 		return "", &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,

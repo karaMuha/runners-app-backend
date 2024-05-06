@@ -16,50 +16,20 @@ func NewUsersRepository(dbHandler *sql.DB) *UsersRepository {
 	}
 }
 
-func (ur UsersRepository) LoginUser(username string, password string) (string, *models.ResponseError) {
+func (ur UsersRepository) QueryGetUser(username string) *sql.Row {
 	query := `
 				SELECT
-					id
+					user_password
 				FROM
 					users
 				WHERE
-					username = $1
-					AND
-					user_password = crypt($2, user_password)`
-	rows, err := ur.dbHandler.Query(query, username, password)
+					username = $1`
+	row := ur.dbHandler.QueryRow(query, username)
 
-	if err != nil {
-		return "", &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
-
-	var id string
-	for rows.Next() {
-		err := rows.Scan(&id)
-		if err != nil {
-			return "", &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return "", &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	return id, nil
+	return row
 }
 
-func (ur UsersRepository) GetUserRole(accessToken string) (string, *models.ResponseError) {
+func (ur UsersRepository) QueryGetUserRole(accessToken string) *sql.Row {
 	query := `
 				SELECT
 					user_role
@@ -67,48 +37,20 @@ func (ur UsersRepository) GetUserRole(accessToken string) (string, *models.Respo
 					users
 				WHERE
 					access_token = $1`
-	rows, err := ur.dbHandler.Query(query, accessToken)
+	row := ur.dbHandler.QueryRow(query, accessToken)
 
-	if err != nil {
-		return "", &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
-
-	var role string
-	for rows.Next() {
-		err := rows.Scan(&role)
-		if err != nil {
-			return "", &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
-			}
-		}
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return "", &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	return role, nil
+	return row
 }
 
-func (ur UsersRepository) SetAccessToken(accessToken string, id string) *models.ResponseError {
+func (ur UsersRepository) QuerySetAccessToken(accessToken string, username string) *models.ResponseError {
 	query := `
 				UPDATE
 					users
 				SET
 					access_token = $1
 				WHERE
-					id = $2`
-	_, err := ur.dbHandler.Exec(query, accessToken, id)
+					username = $2`
+	_, err := ur.dbHandler.Exec(query, accessToken, username)
 
 	if err != nil {
 		return &models.ResponseError{
@@ -120,7 +62,7 @@ func (ur UsersRepository) SetAccessToken(accessToken string, id string) *models.
 	return nil
 }
 
-func (ur UsersRepository) RemoveAccessToken(accessToken string) *models.ResponseError {
+func (ur UsersRepository) QueryRemoveAccessToken(accessToken string) *models.ResponseError {
 	query := `
 				UPDATE
 					users
