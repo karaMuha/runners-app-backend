@@ -107,31 +107,19 @@ func (rr ResultsRepository) QueryDeleteResult(resultId string) (*models.Result, 
 			id = $1
 		RETURNING
 			runner_id, race_result, year`
-	rows, err := rr.dbHandler.Query(query, resultId)
-
-	if err != nil {
-		return nil, &models.ResponseError{
-			Message: err.Error(),
-			Status:  http.StatusInternalServerError,
-		}
-	}
-
-	defer rows.Close()
+	row := rr.dbHandler.QueryRow(query, resultId)
 
 	var runnerId, raceResult string
 	var year int
-	for rows.Next() {
-		err := rows.Scan(&runnerId, &raceResult, &year)
-		if err != nil {
+	err := row.Scan(&runnerId, &raceResult, &year)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
 			return nil, &models.ResponseError{
-				Message: err.Error(),
-				Status:  http.StatusInternalServerError,
+				Message: "Race result not found",
+				Status:  http.StatusNotFound,
 			}
 		}
-	}
-
-	err = rows.Err()
-	if err != nil {
 		return nil, &models.ResponseError{
 			Message: err.Error(),
 			Status:  http.StatusInternalServerError,
