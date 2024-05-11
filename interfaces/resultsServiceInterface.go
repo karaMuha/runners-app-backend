@@ -2,7 +2,7 @@ package interfaces
 
 import "runners/models"
 
-type ResultsService interface {
+type ResultsServiceInterface interface {
 	CreateResult(result *models.Result) (*models.Result, *models.ResponseError)
 
 	UpdateResult(result *models.Result) *models.ResponseError
