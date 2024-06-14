@@ -39,11 +39,11 @@ _NOTE: if you run the scripts in dbscripts directory you will create an admin (p
     "country": "Germany"
 }
 ```
-- PUT /runner -> Update a runner. Include the the runners ID in the request body (Admin route)
-- DELETE /runner/{id} -> Delete runner with corresponding id (Admin route)
-- GET /runner/{id} -> Get runner with corresponding id (Admin and User route)
-- GET /runner -> Get a batch of runners. Optionally you can specify a year OR a country (Admin and User route)
-- POST /result -> Create a race result with following json (Admin route)
+- PUT /runner -> Update a runner. Include the the runners ID in the request body **(Admin route)**
+- DELETE /runner/{id} -> Delete runner with corresponding id **(Admin route)**
+- GET /runner/{id} -> Get runner with corresponding id **(Admin and User route)**
+- GET /runner -> Get a batch of runners. Optionally you can specify a year OR a country **(Admin and User route)**
+- POST /result -> Create a race result with following json **(Admin route)**
 ```
 {
     "runner_id": use id of an existing runner here,
@@ -53,7 +53,7 @@ _NOTE: if you run the scripts in dbscripts directory you will create an admin (p
     "year": 2024
 }
 ```
-- DELETE /result/{id} -> Delete race result with corresponding id (Admin route)
+- DELETE /result/{id} -> Delete race result with corresponding id **(Admin route)**
 ## ToDos
 - switch to docker-compose
 - provide tests
