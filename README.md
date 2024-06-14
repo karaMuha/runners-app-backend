@@ -4,6 +4,8 @@ This app can be used to store runners and their race results.
 
 The main purpose of this project was to learn how to use golang for backend engineering.
 
+Inspired by Dušan Stojanović from his book `Modern Web Development with Go`
+
 ## How run the app
 Prerequisites
 - Docker installed (I have docker desktop version 4.3 installed on Windows 11)
