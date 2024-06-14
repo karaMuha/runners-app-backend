@@ -2,6 +2,7 @@ package services
 
 import (
 	"net/http"
+	"runners/interfaces"
 	"runners/models"
 	"runners/repositories"
 	"time"
@@ -12,7 +13,7 @@ type ResultsService struct {
 	runnersRepository *repositories.RunnersRepository
 }
 
-func NewResultsService(resultsRepository *repositories.ResultsRepository, runnersRepository *repositories.RunnersRepository) *ResultsService {
+func NewResultsService(resultsRepository *repositories.ResultsRepository, runnersRepository *repositories.RunnersRepository) interfaces.ResultsServiceInterface {
 	return &ResultsService{
 		resultsRepository: resultsRepository,
 		runnersRepository: runnersRepository,

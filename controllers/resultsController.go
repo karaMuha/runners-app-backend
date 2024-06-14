@@ -11,11 +11,11 @@ import (
 )
 
 type ResultsController struct {
-	resultsService interfaces.ResultsService
+	resultsService interfaces.ResultsServiceInterface
 	usersService   interfaces.UsersService
 }
 
-func NewResultsController(resultsService interfaces.ResultsService, usersService interfaces.UsersService) *ResultsController {
+func NewResultsController(resultsService interfaces.ResultsServiceInterface, usersService interfaces.UsersService) *ResultsController {
 	return &ResultsController{
 		resultsService: resultsService,
 		usersService:   usersService,
